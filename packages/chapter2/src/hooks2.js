@@ -1,5 +1,5 @@
-
 export function createHooks(callback) {
+  /*  let frameRequested = false;
   const stateContext = {
     current: 0,
     states: [],
@@ -13,6 +13,7 @@ export function createHooks(callback) {
   function resetContext() {
     stateContext.current = 0;
     memoContext.current = 0;
+    frameRequested = false;
   }
 
   const useState = (initState) => {
@@ -27,7 +28,63 @@ export function createHooks(callback) {
       callback();
     };
 
+    if (!frameRequested) {
+      frameRequested = true;
+      requestAnimationFrame(() => {
+        callback();
+        frameRequested = false;
+      });
+    }
+
     return [states[current], setState];
+  };
+ */
+
+  let pending = false; // 변경 사항이 대기 중인지 추적
+  const stateContext = {
+    current: 0,
+    states: [],
+    queue: [], // 상태 업데이트를 위한 큐
+  };
+
+  const memoContext = {
+    current: 0,
+    memos: [],
+  };
+
+  function resetContext() {
+    stateContext.current = 0;
+    memoContext.current = 0;
+    stateContext.queue = [];
+    pending = false;
+  }
+
+  const useState = (initState) => {
+    const id = stateContext.current;
+    stateContext.current += 1;
+
+    if (stateContext.states[id] === undefined) {
+      stateContext.states[id] = initState;
+    }
+
+    const setState = (newState) => {
+      stateContext.queue.push({ id, newState }); // 변경 사항을 큐에 추가
+
+      if (!pending) {
+        pending = true;
+        requestAnimationFrame(() => {
+          // 모든 상태 업데이트를 처리
+          while (stateContext.queue.length) {
+            const { id, newState } = stateContext.queue.shift();
+            stateContext.states[id] = newState;
+          }
+          callback(); // 콜백 호출
+          pending = false;
+        });
+      }
+    };
+
+    return [stateContext.states[id], setState];
   };
 
   const useMemo = (fn, refs) => {
